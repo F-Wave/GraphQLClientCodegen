@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 use serde_json::{Value, Map};
+use minreq;
+use std::fs;
 use crate::parser::Type;
+use std::fs::read_to_string;
+use std::io::Write;
 
 #[derive(PartialEq)]
 pub enum NamedTypeKind {
@@ -97,9 +101,94 @@ fn fields_from(fields: &Value) -> HashMap<String, Field> {
     result
 }
 
+
+pub fn download_schema(url: &str, output: &str) -> Result<String, String> {
+    let get_schema = r#"
+fragment typeFrag on __Type {
+  kind
+  name
+  ofType {
+    kind
+    name
+    ofType {
+      kind
+      name
+      ofType {
+        kind
+        name
+        ofType {
+          kind
+          name
+        }
+      }
+    }
+  }
+}
+
+query {
+  __schema {
+    queryType {
+      name
+    }
+    mutationType {
+      name
+    }
+    subscriptionType {
+      name
+    }
+    types {
+      kind
+      name
+      description
+      fields {
+        name
+        description
+        args {
+          name
+          description
+          defaultValue
+          type { ...typeFrag }
+        }
+        type {...typeFrag }
+        isDeprecated
+        deprecationReason
+      }
+      inputFields { name }
+      interfaces { name }
+      enumValues { name }
+      possibleTypes { name }
+    }
+	}
+}
+"#;
+
+    let resp = match minreq::post(url)
+        .with_body(format!("{{ \"query\" : {:?} }}", get_schema))
+        .send() {
+        Ok(resp) => resp,
+        Err(e) => return Err("Could not connect to server to download schema".to_string()),
+    };
+
+    if resp.status_code == 200 {
+        let mut f = match fs::File::create(output) {
+            Ok(f) => f,
+            Err(_) => return Err("Could not open schema file for writing".to_string())
+        };
+        if let Err(_) = f.write(resp.as_bytes()) {
+            return Err("Could not write to schema file".to_string());
+        }
+        Ok(resp.as_str().unwrap().to_string())
+    } else {
+        Err(format!("Status code {} for getting schema from url", resp.status_code))
+    }
+}
+
 pub fn from(src: &str) -> Result<Schema, serde_json::Error> {
     let json_schema_resp : serde_json::Map<String, serde_json::Value> = serde_json::from_str(src)?;
-    let json_schema = json_schema_resp["__schema"].as_object().unwrap();
+    let json_schema = match json_schema_resp["data"].as_object() {
+        Some(data) => data,
+        None => &json_schema_resp
+    }["__schema"].as_object().unwrap();
 
     let query_type  = json_schema["queryType"].as_object().unwrap();
     let mutation_type = json_schema["mutationType"].as_object().unwrap();

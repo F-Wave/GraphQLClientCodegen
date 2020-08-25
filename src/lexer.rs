@@ -142,7 +142,7 @@ pub fn lex<'a>(path: &'a Path, src: &'a str) -> Result<Vec<Token<'a>>, Error> {
     while let Some(c) = src_it.next() {
         match c {
             //skip
-            ' ' | ',' | '\r' => {},
+            ' ' | ',' | '\r' | '\t' => {},
 
             '\n' => {
                 src_it.line += 1

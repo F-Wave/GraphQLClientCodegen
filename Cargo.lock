@@ -4,6 +4,7 @@
 name = "graphql_client_codegen"
 version = "0.1.0"
 dependencies = [
+ "minreq",
  "serde_json",
 ]
 
@@ -12,6 +13,12 @@ name = "itoa"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc6f3ad7b9d11a0c00842ff8de1b60ee58661048eb8049ed33c73594f359d7e6"
+
+[[package]]
+name = "minreq"
+version = "2.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2466d0a7e6bfcd54f69e4a17d4a4318985aaaf7fe3df4cd3b6f11ff551129ca3"
 
 [[package]]
 name = "ryu"
